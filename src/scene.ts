@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CelestialBody } from './types';
+import { atmosphereVertexShader, atmosphereFragmentShader } from './shaders/atmosphere';
+
 
 export class SolarSystemScene {
   private scene: THREE.Scene;
@@ -104,6 +106,40 @@ export class SolarSystemScene {
     if (iss) {
       iss.position.copy(position);
     }
+  }
+  // glow baby
+  addPlanetWithAtmosphere(planet: CelestialBody) {
+    const geometry = new THREE.SphereGeometry(planet.radius, 32, 32);
+    const material = new THREE.MeshStandardMaterial({
+      color: planet.color,
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+
+    const glowGeometry = new THREE.SphereGeometry(planet.radius * 1.15, 32, 32);
+    const glowMaterial = new THREE.ShaderMaterial({
+      vertexShader: atmosphereVertexShader,
+      fragmentShader: atmosphereFragmentShader,
+      uniforms: {
+        glowColor: { value: new THREE.Color(0x88ccff) },
+        intensity: { value: 0.4 }
+      },
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+    });
+
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    mesh.add(glow);
+    const x = planet.orbitRadius * Math.cos(planet.angle);
+    const z = planet.orbitRadius * Math.sin(planet.angle);
+    mesh.position.set(x, 0, z);
+    mesh.userData = { id: planet.id, orbitRadius: planet.orbitRadius };
+
+    this.scene.add(mesh);
+    this.bodies.set(planet.id, mesh);
   }
 
   addPlanet(planet: CelestialBody) {

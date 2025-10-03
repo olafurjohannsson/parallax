@@ -19,14 +19,18 @@ window.addEventListener('navigate', ((e: CustomEvent) => {
 scene.addSun(solarSystemData.sun.radius, solarSystemData.sun.color);
 
 solarSystemData.planets.forEach((planet) => {
-  scene.addPlanet(planet);
+  if (planet.id === 'earth') {
+    scene.addPlanetWithAtmosphere(planet);
+  } else {
+    scene.addPlanet(planet);
+  }
 });
 
 async function updateISS() {
   const issData = await getISSPosition();
   const earthOrbitRadius = solarSystemData.planets.find(p => p.id === 'earth')!.orbitRadius;
   const position = issTo3D(issData, earthOrbitRadius);
-  
+
   if (!scene.bodies.has('iss')) {
     scene.addISS(position);
     console.log('ISS added at', issData.latitude, issData.longitude);
