@@ -1,8 +1,19 @@
 import { SolarSystemScene } from './scene';
 import { solarSystemData } from './data';
+import { SearchUI } from './ui';
+import { simpleSearch } from './search';
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const scene = new SolarSystemScene(canvas);
+
+const searchUI = new SearchUI((query) => {
+  const results = simpleSearch(query);
+  searchUI.showResults(results);
+});
+
+window.addEventListener('navigate', ((e: CustomEvent) => {
+  scene.transitionToBody(e.detail);
+}) as EventListener);
 
 scene.addSun(solarSystemData.sun.radius, solarSystemData.sun.color);
 
