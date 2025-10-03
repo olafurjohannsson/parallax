@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 interface ISSPosition {
   latitude: number;
   longitude: number;
