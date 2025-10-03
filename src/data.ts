@@ -82,3 +82,11 @@ export const solarSystemData: PlanetData = {
     },
   ],
 };
+
+export const specialObjects = [
+  {
+    id: 'iss',
+    name: 'International Space Station',
+    keywords: ['iss', 'space station', 'international'],
+  }
+];

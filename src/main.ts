@@ -2,6 +2,7 @@ import { SolarSystemScene } from './scene';
 import { solarSystemData } from './data';
 import { SearchUI } from './ui';
 import { simpleSearch } from './search';
+import { getISSPosition, issTo3D } from './iss';
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const scene = new SolarSystemScene(canvas);
@@ -20,6 +21,19 @@ scene.addSun(solarSystemData.sun.radius, solarSystemData.sun.color);
 solarSystemData.planets.forEach((planet) => {
   scene.addPlanet(planet);
 });
+
+async function updateISS() {
+  const issData = await getISSPosition();
+  const earthOrbitRadius = solarSystemData.planets.find(p => p.id === 'earth')!.orbitRadius;
+  const position = issTo3D(issData, earthOrbitRadius);
+  
+  if (!scene.bodies.has('iss')) {
+    scene.addISS(position);
+    console.log('ISS added at', issData.latitude, issData.longitude);
+  } else {
+    scene.updateISS(position);
+  }
+}
 
 let lastTime = Date.now();
 const animate = () => {
@@ -54,3 +68,6 @@ document.addEventListener('keydown', (e) => {
     scene.transitionToBody(planetId);
   }
 });
+
+updateISS();
+setInterval(updateISS, 5000);

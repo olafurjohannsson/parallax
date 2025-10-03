@@ -7,7 +7,7 @@ export class SolarSystemScene {
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private controls: OrbitControls;
-  private bodies: Map<string, THREE.Mesh> = new Map();
+  public bodies: Map<string, THREE.Mesh> = new Map();
   private orbits: Map<string, THREE.Line> = new Map();
 
   constructor(canvas: HTMLCanvasElement) {
@@ -82,6 +82,30 @@ export class SolarSystemScene {
     this.bodies.set('sun', sun);
   }
 
+  addISS(position: THREE.Vector3) {
+    const geometry = new THREE.SphereGeometry(0.5, 16, 16);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+    });
+
+    const iss = new THREE.Mesh(geometry, material);
+    iss.position.copy(position);
+    iss.userData = { id: 'iss' };
+
+    this.scene.add(iss);
+    this.bodies.set('iss', iss);
+
+    return iss;
+  }
+
+  updateISS(position: THREE.Vector3) {
+    const iss = this.bodies.get('iss');
+    if (iss) {
+      iss.position.copy(position);
+    }
+  }
+
   addPlanet(planet: CelestialBody) {
     // meshymesh
     const geometry = new THREE.SphereGeometry(planet.radius, 32, 32);
@@ -93,7 +117,7 @@ export class SolarSystemScene {
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.userData = { id: planet.id, orbitRadius: planet.orbitRadius };
-//pos
+    //pos
     const x = planet.orbitRadius * Math.cos(planet.angle);
     const z = planet.orbitRadius * Math.sin(planet.angle);
     mesh.position.set(x, 0, z);
