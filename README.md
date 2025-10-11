@@ -2,6 +2,10 @@
 
 Real-time 3D solar system visualization with AI-powered search through NASA documents.
 
+![](img1.png)
+
+![](img2.png)
+
 ## Features
 
 - **Real-time visualization**: 8 planets, ISS position updates every 5 seconds
