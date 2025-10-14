@@ -1,6 +1,65 @@
 import { SpaceEvent, EventType } from './types';
+import { ScenarioScript } from '../core/ScenarioPlayer';
+import * as THREE from 'three';
 
-// Complete Apollo 11 event with all details
+const saturnVLaunchPath = [
+  new THREE.Vector3(0, 0, 0),    // Start at the launchpad (relative position)
+  new THREE.Vector3(0, 20, 0),   // Go straight up
+  new THREE.Vector3(10, 40, -10), // Arc outwards
+  new THREE.Vector3(30, 60, -30) // Continue into orbit
+];
+
+const apollo11LaunchScript: ScenarioScript = {
+  id: 'apollo11_launch_scenario',
+  title: 'Apollo 11: The Launch',
+  totalDuration: 30,
+  actions: [
+    {
+      time: 0,
+      type: 'SET_CAMERA',
+      payload: {
+        targetId: 'earth',
+        position: { lat: 28.6081, lon: -80.6041 }, // Kennedy Space Center
+        distance: 5
+      }
+    },
+    {
+      time: 2,
+      type: 'LOAD_MODEL',
+      payload: {
+        modelId: 'saturnV',
+        url: '/models/saturnV.glb',
+        targetId: 'earth',
+        position: { lat: 28.6081, lon: -80.6041 }
+      }
+    },
+    { time: 4, type: 'SHOW_NARRATION', payload: { text: 'July 16, 1969. The Saturn V rocket stands ready.' } },
+    { time: 9, type: 'SHOW_NARRATION', payload: { text: '3... 2... 1... Liftoff!' } },
+    {
+      time: 12,
+      type: 'ANIMATE_MODEL',
+      payload: {
+        modelId: 'saturnV',
+        path: saturnVLaunchPath,
+        duration: 15
+      }
+    },
+    {
+      time: 12.5,
+      type: 'SET_CAMERA',
+      payload: {
+        track: 'saturnV'
+      }
+    },
+    { time: 28, type: 'SHOW_NARRATION', payload: { text: 'The Saturn V has cleared the tower, beginning its journey to the Moon.' } },
+    {
+      time: 29.5,
+      type: 'DESTROY_MODEL',
+      payload: { modelId: 'saturnV' }
+    }
+  ]
+};
+
 export const apollo11Event: SpaceEvent = {
   id: 'apollo11',
   title: 'Apollo 11 Moon Landing',
@@ -8,27 +67,27 @@ export const apollo11Event: SpaceEvent = {
   date: new Date('1969-07-20T20:17:40Z'),
   eventType: EventType.Landing,
   mission: 'Apollo 11',
-  
+
   location: {
     bodyId: 'moon',
     coords: { lat: 0.6875, lon: 23.4333 } // Sea of Tranquility
   },
-  
+
   crew: [
     'Neil Armstrong (Commander)',
     'Buzz Aldrin (Lunar Module Pilot)',
     'Michael Collins (Command Module Pilot)'
   ],
-  
+
   duration: '21 hours 36 minutes on surface',
-  
+
   significance: [
     'First humans to walk on the Moon',
     'Collected 21.55 kg of lunar samples',
     'Deployed scientific instruments',
     'Proved capability for future lunar exploration',
   ],
-  
+
   media: {
     images: [
       {
@@ -41,7 +100,7 @@ export const apollo11Event: SpaceEvent = {
         thumbnail: 'https://images-assets.nasa.gov/image/as11-40-5903/as11-40-5903~thumb.jpg',
       },
     ],
-    
+
     models3D: [
       {
         url: 'https://science.nasa.gov/3d-resources/apollo-11-command-module/',
@@ -51,7 +110,7 @@ export const apollo11Event: SpaceEvent = {
         thumbnail: '/images/apollo11_cm_thumb.jpg',
       },
     ],
-    
+
     audio: [
       {
         url: 'https://www.nasa.gov/62284main_onesmall2.wav',
@@ -60,14 +119,14 @@ export const apollo11Event: SpaceEvent = {
       },
     ],
   },
-  
+
   relatedEvents: ['apollo11_launch', 'apollo11_eva', 'apollo11_return'],
 };
 
 // Main events array
 export const spaceEvents: SpaceEvent[] = [
   apollo11Event,
-  
+
   {
     id: 'apollo11_launch',
     title: 'Apollo 11 Launch',
@@ -75,6 +134,7 @@ export const spaceEvents: SpaceEvent[] = [
     date: new Date('1969-07-16T13:32:00Z'),
     eventType: EventType.Launch,
     mission: 'Apollo 11',
+    script: apollo11LaunchScript,
     location: {
       bodyId: 'earth',
       coords: { lat: 28.6081, lon: -80.6041 } // Kennedy Space Center
@@ -85,7 +145,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Perfect launch with no technical issues',
     ],
   },
-  
+
   {
     id: 'sputnik1',
     title: 'Sputnik 1 Launch',
@@ -103,7 +163,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Transmitted radio signals for 21 days',
     ],
   },
-  
+
   {
     id: 'yuri_gagarin',
     title: 'First Human in Space',
@@ -123,7 +183,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Reached altitude of 327 km',
     ],
   },
-  
+
   {
     id: 'mars_pathfinder',
     title: 'Mars Pathfinder Landing',
@@ -141,7 +201,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Analyzed Martian rocks and atmosphere',
     ],
   },
-  
+
   {
     id: 'voyager1_launch',
     title: 'Voyager 1 Launch',
@@ -159,7 +219,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Still operational after 45+ years',
     ],
   },
-  
+
   {
     id: 'hubble_launch',
     title: 'Hubble Space Telescope Launch',
@@ -184,7 +244,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Still operational after 30+ years',
     ],
   },
-  
+
   {
     id: 'apollo13',
     title: 'Apollo 13 Incident',
@@ -206,7 +266,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Led to significant safety improvements',
     ],
   },
-  
+
   {
     id: 'iss_first_module',
     title: 'ISS First Module Launch',
@@ -224,7 +284,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Continuous human presence in space since 2000',
     ],
   },
-  
+
   {
     id: 'curiosity_landing',
     title: 'Curiosity Rover Landing',
@@ -242,7 +302,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Found evidence of ancient water on Mars',
     ],
   },
-  
+
   {
     id: 'new_horizons_pluto',
     title: 'New Horizons Pluto Flyby',
@@ -259,7 +319,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Revealed complex atmosphere and moons',
     ],
   },
-  
+
   {
     id: 'spacex_crew_dragon',
     title: 'First Commercial Crew Launch',
@@ -281,7 +341,7 @@ export const spaceEvents: SpaceEvent[] = [
       'New era of commercial space transportation',
     ],
   },
-  
+
   {
     id: 'perseverance_landing',
     title: 'Perseverance Rover Landing',
@@ -299,7 +359,7 @@ export const spaceEvents: SpaceEvent[] = [
       'Advanced life-detection instruments',
     ],
   },
-  
+
   {
     id: 'jwst_launch',
     title: 'James Webb Space Telescope Launch',

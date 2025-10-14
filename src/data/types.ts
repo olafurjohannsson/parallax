@@ -1,3 +1,5 @@
+import { ScenarioScript } from './core/ScenarioPlayer';
+
 export interface CelestialBody {
   id: string;
   name: string;
@@ -28,6 +30,7 @@ export interface SpaceEvent {
   duration?: string;
   significance?: string[];
   relatedEvents?: string[];
+  script?: ScenarioScript;
 }
 
 export interface EventMedia {

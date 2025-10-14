@@ -3,28 +3,28 @@ type EventCallback = (data?: any) => void;
 export class EventBus {
   private static instance: EventBus;
   private events: Map<string, Set<EventCallback>>;
-  
+
   private constructor() {
     this.events = new Map();
   }
-  
+
   static getInstance(): EventBus {
     if (!EventBus.instance) {
       EventBus.instance = new EventBus();
     }
     return EventBus.instance;
   }
-  
+
   on(event: string, callback: EventCallback): () => void {
     if (!this.events.has(event)) {
       this.events.set(event, new Set());
     }
     this.events.get(event)!.add(callback);
-    
+
     // Return unsubscribe function
     return () => this.off(event, callback);
   }
-  
+
   off(event: string, callback: EventCallback) {
     const callbacks = this.events.get(event);
     if (callbacks) {
@@ -34,14 +34,14 @@ export class EventBus {
       }
     }
   }
-  
+
   emit(event: string, data?: any) {
     const callbacks = this.events.get(event);
     if (callbacks) {
       callbacks.forEach(callback => callback(data));
     }
   }
-  
+
   once(event: string, callback: EventCallback) {
     const wrapper = (data?: any) => {
       callback(data);
@@ -49,7 +49,7 @@ export class EventBus {
     };
     this.on(event, wrapper);
   }
-  
+
   clear() {
     this.events.clear();
   }
@@ -74,4 +74,7 @@ export const Events = {
   PLAY_AUDIO: 'action:playAudio',
   LOAD_MODEL: 'action:loadModel',
   MOVE_MODEL: 'action:moveModel',
+  ANIMATE_MODEL: 'action:animateModel',
+  DESTROY_MODEL: 'action:destroyModel',
+  
 } as const;

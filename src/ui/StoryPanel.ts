@@ -1,3 +1,5 @@
+import { EventBus } from "../core/EventBus";
+import { Events } from "../core/EventBus";
 
 export class StoryPanel {
   private container: HTMLDivElement;

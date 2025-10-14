@@ -1,3 +1,4 @@
+import { EventBus, Events } from '../core/EventBus';
 
 
 export class TimeControls {
@@ -6,12 +7,12 @@ export class TimeControls {
   private dateDisplay: HTMLDivElement;
   private playButton: HTMLButtonElement;
   private speedControl: HTMLInputElement;
-  
+
   private minDate: Date;
   private maxDate: Date;
   private currentDate: Date;
-  private isPlaying: boolean = false;
-  
+  private isPlaying: boolean = true;
+
   constructor(
     onDateChange: (date: Date) => void,
     onPlayToggle: (playing: boolean) => void,
@@ -20,7 +21,7 @@ export class TimeControls {
     this.minDate = new Date('1957-10-04'); // Sputnik 1
     this.maxDate = new Date('2030-01-01');
     this.currentDate = new Date();
-    
+
     this.container = document.createElement('div');
     this.container.style.cssText = `
       position: fixed;
@@ -34,7 +35,7 @@ export class TimeControls {
       border-radius: 12px;
       z-index: 1000;
     `;
-    
+
     this.dateDisplay = document.createElement('div');
     this.dateDisplay.style.cssText = `
       color: white;
@@ -44,7 +45,7 @@ export class TimeControls {
       font-weight: 600;
     `;
     this.updateDateDisplay();
-    
+
     this.slider = document.createElement('input');
     this.slider.type = 'range';
     this.slider.min = '0';
@@ -56,14 +57,14 @@ export class TimeControls {
       margin: 12px 0;
       cursor: pointer;
     `;
-    
+
     this.slider.addEventListener('input', (e) => {
       const value = parseInt((e.target as HTMLInputElement).value);
       this.currentDate = this.sliderValueToDate(value);
       this.updateDateDisplay();
       onDateChange(this.currentDate);
     });
-    
+
     const controlsRow = document.createElement('div');
     controlsRow.style.cssText = `
       display: flex;
@@ -73,6 +74,7 @@ export class TimeControls {
       margin-top: 12px;
     `;
     
+
     this.playButton = document.createElement('button');
     this.playButton.textContent = '▶ Play';
     this.playButton.style.cssText = `
@@ -90,51 +92,63 @@ export class TimeControls {
       this.playButton.textContent = this.isPlaying ? '⏸ Pause' : '▶ Play';
       onPlayToggle(this.isPlaying);
     });
-    
+    EventBus.getInstance().on('state:isPlaying', ({ newValue }) => {
+      this.isPlaying = newValue;
+      this.playButton.textContent = this.isPlaying ? '⏸ Pause' : '▶ Play';
+    });
+    EventBus.getInstance().on(Events.TIME_UPDATE, ({ simulationTime }) => {
+      this.setDate(simulationTime);
+    });
+    this.playButton.textContent = this.isPlaying ? '⏸ Pause' : '▶ Play';
+
     const speedLabel = document.createElement('label');
     speedLabel.style.cssText = 'color: white; font-size: 14px;';
     speedLabel.textContent = 'Speed: ';
-    
+
     this.speedControl = document.createElement('input');
     this.speedControl.type = 'range';
     this.speedControl.min = '1';
     this.speedControl.max = '365';
     this.speedControl.value = '30';
     this.speedControl.style.cssText = 'width: 150px;';
-    
+
     const speedValue = document.createElement('span');
     speedValue.style.cssText = 'color: white; font-size: 14px; min-width: 80px;';
     speedValue.textContent = '30 days/sec';
-    
+
     this.speedControl.addEventListener('input', (e) => {
       const value = parseInt((e.target as HTMLInputElement).value);
       speedValue.textContent = `${value} days/sec`;
-      onSpeedChange(value * 86400); 
+      onSpeedChange(value * 86400);
     });
-    
+
     controlsRow.appendChild(this.playButton);
     controlsRow.appendChild(speedLabel);
     controlsRow.appendChild(this.speedControl);
     controlsRow.appendChild(speedValue);
-    
+
     this.container.appendChild(this.dateDisplay);
     this.container.appendChild(this.slider);
     this.container.appendChild(controlsRow);
     document.body.appendChild(this.container);
+
+    EventBus.getInstance().on(Events.TIME_UPDATE, ({ simulationTime }) => {
+      this.setDate(simulationTime);
+    });
   }
-  
+
   private dateToSliderValue(date: Date): number {
     const total = this.maxDate.getTime() - this.minDate.getTime();
     const current = date.getTime() - this.minDate.getTime();
     return Math.round((current / total) * 1000);
   }
-  
+
   private sliderValueToDate(value: number): Date {
     const total = this.maxDate.getTime() - this.minDate.getTime();
     const offset = (value / 1000) * total;
     return new Date(this.minDate.getTime() + offset);
   }
-  
+
   private updateDateDisplay() {
     this.dateDisplay.textContent = this.currentDate.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -142,13 +156,13 @@ export class TimeControls {
       day: 'numeric',
     });
   }
-  
+
   setDate(date: Date) {
     this.currentDate = date;
     this.slider.value = this.dateToSliderValue(date).toString();
     this.updateDateDisplay();
   }
-  
+
   getIsPlaying(): boolean {
     return this.isPlaying;
   }

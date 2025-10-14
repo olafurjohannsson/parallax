@@ -1,4 +1,4 @@
-
+import TWEEN from '@tweenjs/tween.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CelestialBody } from '../types';
@@ -29,6 +29,8 @@ export class SolarSystemScene {
   private minimap: SolarSystemMinimap;
   private iss: THREE.Group | null = null;
   private canvas: HTMLCanvasElement;
+  private scenarioObjects = new Map<string, THREE.Object3D>();
+  private scenarioCameraTarget: THREE.Object3D | null = null;
 
   constructor(canvas: HTMLCanvasElement, minimap: SolarSystemMinimap) { // Pass minimap instance
     // Initialize core systems
@@ -45,7 +47,7 @@ export class SolarSystemScene {
       60,
       window.innerWidth / window.innerHeight,
       0.1,
-      5000 // far plane for stars
+      50000 // far plane 
     );
     this.camera.position.set(0, 150, 300);
 
@@ -54,6 +56,8 @@ export class SolarSystemScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.5;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
@@ -68,17 +72,100 @@ export class SolarSystemScene {
     this.setupLighting();
     this.addStars();
 
+    this.canvas.addEventListener('mousedown', this._onCanvasClick.bind(this));
     this.canvas.addEventListener('dblclick', this._onDeselect.bind(this));
 
     this._setupScenarioListeners();
   }
+
+  private _getWorldCoordinates(targetId: string, lat: number, lon: number): THREE.Vector3 {
+    const planet = this.bodies.get(targetId);
+    if (!planet) return new THREE.Vector3();
+
+    const planetRadius = this._getBodyRadius(planet);
+    const latRad = (lat * Math.PI) / 180;
+    const lonRad = -(lon * Math.PI) / 180; // Adjust for coordinate system
+
+    // Get position relative to planet center
+    const localPos = new THREE.Vector3(
+      planetRadius * Math.cos(latRad) * Math.cos(lonRad),
+      planetRadius * Math.sin(latRad),
+      planetRadius * Math.cos(latRad) * Math.sin(lonRad)
+    );
+
+    // Add planet's current world position
+    const worldPos = new THREE.Vector3();
+    planet.getWorldPosition(worldPos);
+    return localPos.add(worldPos);
+  }
+
   private _setupScenarioListeners() {
-    this.eventBus.on(Events.SET_CAMERA, (payload) => {
-      if (payload.target) {
-        this.transitionToBody(payload.target, payload.duration || 2000);
+    this.eventBus.on(Events.SET_CAMERA, async (payload) => {
+      if (payload.track) {
+        this.scenarioCameraTarget = this.scenarioObjects.get(payload.track) || null;
+      } else if (payload.targetId && payload.position) {
+        this.scenarioCameraTarget = null; // Stop tracking dynamic objects
+        const targetBody = this.bodies.get(payload.targetId);
+        if (!targetBody) return;
+
+        const targetPosition = this._getWorldCoordinates(payload.targetId, payload.position.lat, payload.position.lon);
+        const cameraPosition = targetPosition.clone().add(new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(payload.distance || 5));
+        this.transitionCamera(cameraPosition, targetPosition);
       }
     });
+
+    this.eventBus.on(Events.LOAD_MODEL, async (payload) => {
+      try {
+        const gltf = await this.resourceManager.loadModel(payload.modelId, payload.url);
+        const model = gltf.scene;
+
+        const position = this._getWorldCoordinates(payload.targetId, payload.position.lat, payload.position.lon);
+        model.position.copy(position);
+
+        // Orient the model to point "up" away from the planet's center
+        const planet = this.bodies.get(payload.targetId);
+        if (planet) model.lookAt(planet.position);
+        model.rotateX(Math.PI / 2); // Correct orientation after lookAt
+
+        this.scene.add(model);
+        this.scenarioObjects.set(payload.modelId, model);
+      } catch (e) { console.error("Failed to load scenario model:", e); }
+    });
+
+    this.eventBus.on(Events.ANIMATE_MODEL, (payload) => {
+      const model = this.scenarioObjects.get(payload.modelId);
+      if (!model) return;
+
+      const startPosition = model.position.clone();
+      const pathVectors = payload.path.map((p: THREE.Vector3) => startPosition.clone().add(p));
+
+      // Use a simple tween to animate along the path
+      new TWEEN.Tween({ t: 0 })
+        .to({ t: 1 }, payload.duration * 1000)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(({ t }) => {
+          const curve = new THREE.CatmullRomCurve3(pathVectors);
+          const position = curve.getPointAt(t);
+          model.position.copy(position);
+        })
+        .start();
+    });
+
+    this.eventBus.on(Events.DESTROY_MODEL, (payload) => {
+      const model = this.scenarioObjects.get(payload.modelId);
+      if (model) {
+        this.scene.remove(model);
+        this.scenarioObjects.delete(payload.modelId);
+        // Add cleanup for geometries/materials if needed
+      }
+    });
+
+    // Clean up when a scenario ends
+    this.eventBus.on(Events.SCENARIO_END, () => {
+      this.scenarioCameraTarget = null;
+    });
   }
+
   async addISS(earth: THREE.Mesh) {
     try {
       const initialPositionData = await getISSPosition();
@@ -142,6 +229,8 @@ export class SolarSystemScene {
     });
 
     const saturn = new THREE.Mesh(geometry, material);
+    saturn.castShadow = true;
+    saturn.receiveShadow = true;
     saturn.userData = { id: planet.id, orbitRadius: planet.orbitRadius };
 
     // Rings
@@ -163,6 +252,7 @@ export class SolarSystemScene {
     });
     const rings = new THREE.Mesh(ringGeometry, ringMaterial);
     rings.rotation.x = Math.PI / 2;
+    rings.receiveShadow = true;
     saturn.add(rings);
 
     // Position will be set by updatePlanetPositions
@@ -180,6 +270,8 @@ export class SolarSystemScene {
     const geometry = new THREE.SphereGeometry(planet.radius, 128, 128);
     const earthMaterial = new THREE.MeshStandardMaterial({ map: dayTexture });
     const earth = new THREE.Mesh(geometry, earthMaterial);
+    earth.castShadow = true;
+    earth.receiveShadow = true;
 
     const cloudGeometry = new THREE.SphereGeometry(planet.radius * 1.01, 64, 64);
     const cloudMaterial = new THREE.MeshStandardMaterial({
@@ -244,12 +336,15 @@ export class SolarSystemScene {
     this.scene.add(ambientLight);
     const sunLight = new THREE.PointLight(0xffffff, 2, 0);
     sunLight.position.set(0, 0, 0);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
     this.scene.add(sunLight);
   }
 
   private addStars() {
     const starsTexture = this.resourceManager.getTexture('stars_milky_way');
-    const starsGeometry = new THREE.SphereGeometry(4000, 64, 64);
+    const starsGeometry = new THREE.SphereGeometry(40000, 64, 64);
     const starsMaterial = new THREE.MeshBasicMaterial({
       map: starsTexture,
       side: THREE.BackSide
@@ -259,6 +354,9 @@ export class SolarSystemScene {
   }
 
   public update(deltaTime: number, elapsedTime: number) {
+    TWEEN.update();
+    const state = this.stateManager.getState();
+
     this.controls.update();
 
     this.bodies.forEach((body, id) => {
@@ -270,13 +368,18 @@ export class SolarSystemScene {
     const moon = this.bodies.get('moon');
     const earth = this.bodies.get('earth');
     if (moon && earth) {
-      moon.userData.angle = (moon.userData.angle || 0) + deltaTime * 0.5;
-      const moonOrbit = 10;
-      moon.position.set(
-        earth.position.x + Math.cos(moon.userData.angle) * moonOrbit,
-        earth.position.y,
-        earth.position.z + Math.sin(moon.userData.angle) * moonOrbit
-      );
+      if (state.isPlaying) {
+        const moonOrbitSpeed = 0.5; // Radians per day (approx)
+        const simulationDays = (state.currentDate.getTime() - new Date('2000-01-01').getTime()) / (1000 * 60 * 60 * 24);
+        const moonAngle = (simulationDays * moonOrbitSpeed) % (2 * Math.PI);
+
+        const moonOrbitRadius = 10;
+        moon.position.set(
+          earth.position.x + Math.cos(moonAngle) * moonOrbitRadius,
+          earth.position.y,
+          earth.position.z + Math.sin(moonAngle) * moonOrbitRadius
+        );
+      }
     }
 
     if (this.iss && earth) {
@@ -297,17 +400,22 @@ export class SolarSystemScene {
       }
       this.iss.position.copy(this.iss.userData.initialPosition).applyQuaternion(orbitRotation);
     }
-
-    const selectedBodyId = this.stateManager.getState().selectedBody;
-    if (selectedBodyId) {
-      const targetBody = this.bodies.get(selectedBodyId) || (this.iss?.userData.id === selectedBodyId ? this.iss : null);
-
+    if (this.scenarioCameraTarget) {
+      const targetPosition = new THREE.Vector3();
+      this.scenarioCameraTarget.getWorldPosition(targetPosition);
+      this.controls.target.lerp(targetPosition, 0.1);
+    } else if (state.selectedBody) {
+      const targetBody = this.bodies.get(state.selectedBody) || (this.iss?.userData.id === state.selectedBody ? this.iss : null);
       if (targetBody) {
         const targetPosition = new THREE.Vector3();
         targetBody.getWorldPosition(targetPosition);
 
-        // Smoothly interpolate the camera's target towards the selected body's position
-        this.controls.target.lerp(targetPosition, 0.08);
+        // Make the lerp factor adaptive to the time scale. Faster time = less smoothing.
+        const baseLerp = 0.08;
+        const timeScaleFactor = Math.min(state.timeScale / 86400, 10); // Cap the effect
+        const adaptiveLerp = baseLerp * (1 + timeScaleFactor);
+
+        this.controls.target.lerp(targetPosition, Math.min(adaptiveLerp, 1)); // Ensure it doesn't exceed 1
       }
     }
 
@@ -315,11 +423,29 @@ export class SolarSystemScene {
     this.minimap.update(this.bodies, this.camera.position);
   }
 
+  private _onCanvasClick(event: MouseEvent) {
+    setTimeout(() => {
+      if (!this.stateManager.getState().hoveredBody && this.stateManager.getState().selectedBody) {
+        this.stateManager.selectBody(null);
+      }
+    }, 10);
+  }
+
   private _onDeselect() {
     if (this.stateManager.getState().selectedBody) {
       this.stateManager.selectBody(null);
       this.transitionToOverview(); // Animate camera back to a wide shot
     }
+  }
+  public transitionCamera(newPosition: THREE.Vector3, newTarget: THREE.Vector3, duration = 2000) {
+    new TWEEN.Tween(this.camera.position)
+      .to(newPosition, duration)
+      .easing(TWEEN.Easing.Cubic.InOut)
+      .start();
+    new TWEEN.Tween(this.controls.target)
+      .to(newTarget, duration)
+      .easing(TWEEN.Easing.Cubic.InOut)
+      .start();
   }
   public transitionToOverview(duration: number = 2000): Promise<void> {
     return new Promise((resolve) => {
@@ -371,6 +497,8 @@ export class SolarSystemScene {
       metalness: 0.2,
     });
     const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     mesh.userData = { id: planet.id };
 
     this.interactionManager.registerInteractable(planet.id, mesh);
@@ -392,22 +520,24 @@ export class SolarSystemScene {
     this.bodies.set('moon', moon);
     return moon;
   }
-
+  private _getBodyRadius(body: THREE.Object3D): number {
+    const box = new THREE.Box3().setFromObject(body);
+    const sphere = new THREE.Sphere();
+    box.getBoundingSphere(sphere);
+    return sphere.radius;
+  }
   transitionToBody(id: string, duration: number = 2000): Promise<void> {
     return new Promise((resolve) => {
-      const body = this.bodies.get(id);
-      if (!body) {
-        resolve();
-        return;
-      }
+      const body = this.bodies.get(id) || (this.iss?.userData.id === id ? this.iss : null);
+      if (!body) return resolve();
 
-      this.stateManager.setCameraTarget(id);
+      const targetPos = new THREE.Vector3();
+      body.getWorldPosition(targetPos);
 
-      const boundingSphere = new THREE.Box3().setFromObject(body).getBoundingSphere(new THREE.Sphere());
-      const radius = boundingSphere.radius;
-      const distance = radius * 4;
+      const radius = this._getBodyRadius(body);
+      const distance = radius * 3;
 
-      const cameraTargetPos = body.position.clone().add(
+      const cameraTargetPos = targetPos.clone().add(
         new THREE.Vector3(1, 0.5, 1).normalize().multiplyScalar(distance)
       );
 

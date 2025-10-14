@@ -24,9 +24,9 @@ export class DetailPanel {
   private _applyBaseStyles() {
     this.container.style.cssText = `
       position: fixed;
-      right: 20px;
-      top: 50%;
-      transform: translateY(-50%);
+      left: 20px;
+      top: 400px;
+      transform: none;
       width: 400px;
       max-height: 80vh;
       background: rgba(10, 15, 30, 0.7);
@@ -87,8 +87,13 @@ export class DetailPanel {
       <div style="padding: 24px; overflow-y: auto; max-height: 80vh;">
         <button id="detail-panel-close" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 24px; color: #fff; cursor: pointer; opacity: 0.7;">&times;</button>
         
+        <div style="width: 100%; height: 180px; background: #000 url('/textures/${info.id}.jpg') center center / cover; border-radius: 8px; margin-bottom: 16px;"></div>
+
         <h2 style="margin: 0 0 12px 0; font-size: 28px; color: #667eea; font-weight: bold;">${info.name}</h2>
-        <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #cdd6f4;">${info.description}</p>
+        <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #cdd6f4;">
+          ${info.description}. Discovered by ${info.discoveredBy || 'N/A'} in ${info.discoveredDate || 'N/A'}. 
+          It has an atmosphere composed primarily of ${info.atmosphere || 'N/A'}.
+        </p>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
           ${this._createStat('Diameter', `${info.diameter.toLocaleString()} km`)}

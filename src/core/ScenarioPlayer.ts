@@ -3,7 +3,7 @@ import { EventBus, Events } from './EventBus';
 
 export type ScenarioAction = {
   time: number;
-  type: 'SET_CAMERA' | 'SHOW_NARRATION' | 'SHOW_IMAGE' | 'PLAY_AUDIO' | 'LOAD_MODEL' | 'MOVE_MODEL';
+  type: 'SET_CAMERA' | 'SHOW_NARRATION' | 'SHOW_IMAGE' | 'PLAY_AUDIO' | 'LOAD_MODEL' | 'MOVE_MODEL' | 'ANIMATE_MODEL' | 'DESTROY_MODEL';
   payload: any;
 };
 
@@ -88,6 +88,12 @@ export class ScenarioPlayer {
 
   private _executeAction(action: ScenarioAction) {
     console.log(`Executing action: ${action.type} at ${action.time}s`, action.payload);
-    this.eventBus.emit(action.type as keyof typeof Events, action.payload);
+    const eventName = Events[action.type as keyof typeof Events];
+
+    if (eventName) {
+      this.eventBus.emit(eventName, action.payload);
+    } else {
+      console.warn(`ScenarioPlayer: Unknown action type "${action.type}"`);
+    }
   }
 }

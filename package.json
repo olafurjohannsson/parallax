@@ -5,7 +5,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tweenjs/tween.js": "^25.0.0",
     "three": "^0.180.0",
+    "tween": "^0.9.0",
     "vite": "^7.1.9"
   }
 }

@@ -20,12 +20,13 @@ import { EventDetailPanel } from './ui/EventDetailPanel';
 import { SearchUI } from './ui/SearchUI';
 import { DetailPanel } from './ui/DetailPanel';
 import { StoryPanel } from './ui/StoryPanel';
+import { HomeButton } from './ui/HomeButton';
 
 // Data
 import { solarSystemData } from './data/solarSystemData';
 import { planetDatabase } from './data/planetInfo';
 import { spaceEvents } from './data/eventData';
-import { SpaceEvent, EventType } from './data/types'; 
+import { SpaceEvent, EventType } from './data/types';
 
 // Components
 import { getISSPosition, issTo3D } from './components/ISS';
@@ -48,23 +49,26 @@ async function init() {
 
     // Initialize scene
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-    
+
     // UI Components
     const tooltip = new PlanetTooltip();
     const minimap = new SolarSystemMinimap(
-      (planetId: string) => eventBus.emit(Events.BODY_CLICK, { id: planetId })
+      (planetId: string) => {
+        stateManager.selectBody(planetId)
+      }
     );
     const scene = new SolarSystemScene(canvas, minimap);
 
     const scenarioPlayer = ScenarioPlayer.getInstance();
     const storyPanel = new StoryPanel();
+    const homeButton = new HomeButton(scene);
 
     const eventPanel = new EventDetailPanel(
-      () => {},
+      () => { },
       (bodyId: string) => scene.transitionToBody(bodyId),
       (query: string) => console.log(`Search docs for: ${query}`)
     );
-    
+
     const searchUI = new SearchUI((query: string) => {
       const results = simpleSearch(query);
       searchUI.showResults(results);
@@ -75,7 +79,7 @@ async function init() {
       (playing: boolean) => stateManager.setState('isPlaying', playing),
       (speed: number) => stateManager.setState('timeScale', speed)
     );
-    
+
     const eventTimeline = new EventTimeline(
       (event: SpaceEvent) => eventPanel.show(event)
     );
@@ -84,7 +88,7 @@ async function init() {
 
     // Setup event listeners
     setupEventListeners(eventBus, scene, tooltip);
-    
+
 
     // Add celestial bodies
     await setupSolarSystem(scene);
@@ -105,6 +109,9 @@ async function init() {
     renderPipeline.start();
     timeManager.setSimulationTime(new Date());
 
+    await scene.transitionToBody('earth', 3000);
+    stateManager.selectBody('earth');
+
     console.log('Solar System initialized successfully');
 
   } catch (error) {
@@ -115,6 +122,9 @@ async function init() {
         </div>
         <div style="color: #FFCDD2; font-size: 18px; max-width: 600px; line-height: 1.5;">
           A critical error occurred while loading resources. Please check the browser's developer console (F12) for more details. This is often caused by missing texture or model files.
+        </div>
+        <div style="color: #FFCDD2; font-size: 18px; max-width: 600px; line-height: 1.5;">
+          ${error}
         </div>
       </div>
     `;
@@ -159,23 +169,23 @@ function setupEventListeners(
     const planetInfo = planetDatabase[id];
     if (planetInfo) tooltip.show(planetInfo, x, y);
   });
-  
+
   eventBus.on(Events.BODY_HOVER_END, () => tooltip.hide());
-  
+
   eventBus.on(Events.BODY_CLICK, ({ id }) => scene.transitionToBody(id));
-  
+
 }
 
 
 async function setupSolarSystem(scene: SolarSystemScene) {
   await scene.addSun(solarSystemData.sun.radius);
-  
+
   for (const planet of solarSystemData.planets) {
     if (planet.id === 'saturn') await scene.addSaturnWithRings(planet);
     else if (planet.id === 'earth') await scene.addEarthWithClouds(planet);
     else await scene.addPlanet(planet);
   }
-  
+
   const earth = solarSystemData.planets.find(p => p.id === 'earth');
   if (earth) await scene.addMoon(earth.radius);
 }
@@ -204,18 +214,12 @@ function setupKeyboardShortcuts(scene: SolarSystemScene, eventPanel: EventDetail
       'i': 'iss',
       'm': 'moon',
     };
-    
+
     const planetId = planetMap[e.key.toLowerCase()];
     if (planetId) {
       scene.transitionToBody(planetId);
     }
-    
-    if (e.key.toLowerCase() === 'a') {
-      const apollo11 = spaceEvents.find(ev => ev.id === 'apollo11');
-      if (apollo11) {
-        eventPanel.show(apollo11);
-      }
-    }
+
   });
 }
 

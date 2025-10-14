@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { EventBus, Events } from '../core/EventBus';
 
 export class SolarSystemMinimap {
   private canvas: HTMLCanvasElement;
@@ -9,8 +10,12 @@ export class SolarSystemMinimap {
   private scale: number = 0.4;
   private size: number = 340;
   private zoomLevel: number = 1.0;
-  
+  private eventBus: EventBus;
+  private prevHoveredPlanet: string | null = null;
+
   constructor(private onPlanetClick: (planetId: string) => void) {
+    this.eventBus = EventBus.getInstance();
+    
     this.container = document.createElement('div');
     this.container.style.cssText = `
       position: fixed;
@@ -136,7 +141,7 @@ export class SolarSystemMinimap {
     }
   }
   
-  private onMouseMove(e: MouseEvent) {
+private onMouseMove(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -171,6 +176,18 @@ export class SolarSystemMinimap {
         closestPlanet = id;
       }
     });
+    if (closestPlanet !== this.prevHoveredPlanet) {
+      // If we were hovering something before, fire the hover_end event
+      if (this.prevHoveredPlanet) {
+        this.eventBus.emit(Events.BODY_HOVER_END, { id: this.prevHoveredPlanet });
+      }
+      // If we are hovering something new, fire the hover event
+      if (closestPlanet) {
+        this.eventBus.emit(Events.BODY_HOVER, { id: closestPlanet });
+      }
+      
+      this.prevHoveredPlanet = closestPlanet;
+    }
     
     this.hoveredPlanet = closestPlanet;
     this.updateTooltip(closestPlanet ? this.getPlanetName(closestPlanet) : '');
