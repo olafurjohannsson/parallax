@@ -1,0 +1,31 @@
+{
+  "name": "edgebert",
+  "type": "module",
+  "collaborators": [
+    "Ólafur Aron Jóhannsson <olafurjohannss@gmail.com>"
+  ],
+  "description": "Fast local text embeddings library for Rust and WASM for BERT inference on native and edge devices with no dependencies.",
+  "version": "0.3.4",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olafurjohannssson/edgebert"
+  },
+  "files": [
+    "edgebert_bg.wasm",
+    "edgebert.js",
+    "edgebert.d.ts"
+  ],
+  "main": "edgebert.js",
+  "types": "edgebert.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ],
+  "keywords": [
+    "bert",
+    "nlp",
+    "wasm",
+    "transformer",
+    "embeddings"
+  ]
+}

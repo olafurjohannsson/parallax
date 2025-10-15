@@ -1,0 +1,15 @@
+{
+  "name": "edgerag",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "edgerag_bg.wasm",
+    "edgerag.js",
+    "edgerag.d.ts"
+  ],
+  "main": "edgerag.js",
+  "types": "edgerag.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
