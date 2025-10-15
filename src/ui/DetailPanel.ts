@@ -1,4 +1,4 @@
-
+import { RAGService, DocumentChunk } from '../core/RAGService';
 import { EventBus } from '../core/EventBus';
 import { StateManager } from '../core/StateManager';
 import { planetDatabase } from '../data/planetInfo';
@@ -8,6 +8,7 @@ export class DetailPanel {
   private container: HTMLDivElement;
   private stateManager: StateManager;
   private eventBus: EventBus;
+  private currentDocumentId: string | null = null;
 
   constructor() {
     this.stateManager = StateManager.getInstance();
@@ -55,15 +56,26 @@ export class DetailPanel {
     });
   }
 
-  public show(bodyId: string) {
+  public show(bodyId: string, documentId?: string) {
     const info = planetDatabase[bodyId];
     if (!info) return;
 
+    this.currentDocumentId = documentId || null;
     this.container.innerHTML = this._createPanelHTML(info);
-    
+
     document.getElementById('detail-panel-close')?.addEventListener('click', () => {
       this.stateManager.selectBody(null);
     });
+    const searchForm = document.getElementById('rag-form');
+    if (searchForm) {
+      searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = (document.getElementById('rag-input') as HTMLInputElement);
+        if (input.value) {
+          this._handleSearch(input.value);
+        }
+      });
+    }
 
     this.container.style.display = 'block';
     setTimeout(() => {
@@ -75,14 +87,69 @@ export class DetailPanel {
   public hide() {
     this.container.style.opacity = '0';
     this.container.style.transform = 'translateY(-50%) scale(0.95)';
-    
+
     setTimeout(() => {
       this.container.style.display = 'none';
       this.container.innerHTML = '';
     }, 400);
   }
+  private async _handleSearch(query: string) {
+    const resultsContainer = document.getElementById('rag-results');
+    if (!resultsContainer) return;
 
+    resultsContainer.innerHTML = `<div class="rag-status">Searching for answers...</div>`;
+
+    try {
+      // 1. Find the most relevant chunks
+      const chunks = await RAGService.getInstance().search(query);
+      if (!chunks || chunks.length === 0) {
+        resultsContainer.innerHTML = `<div class="rag-status">No relevant information found in the documents.</div>`;
+        return;
+      }
+
+      // 2. Create a context string from the text chunks for summarization
+      const context = chunks
+        .filter(c => c.content.type === 'text' && c.content.text)
+        .map(c => c.content.text!.html.replace(/<[^>]+>/g, '')) // Strip HTML tags for the summarizer
+        .join('\n\n');
+
+      // 3. Get a summarized answer
+      const summary = await RAGService.getInstance().summarize(context);
+
+      // 4. Render the results
+      let html = `<h4>AI Generated Summary:</h4><p>${summary}</p><h4>Relevant Document Excerpts:</h4>`;
+      html += chunks.map(chunk => this._renderChunk(chunk)).join('');
+      resultsContainer.innerHTML = html;
+
+    } catch (error) {
+      console.error('RAG search failed:', error);
+      resultsContainer.innerHTML = `<div class="rag-status">An error occurred during the search.</div>`;
+    }
+  }
+
+  private _renderChunk(chunk: DocumentChunk): string {
+    let contentHtml = '';
+    switch (chunk.content.type) {
+      case 'text':
+        contentHtml = chunk.content.text?.html || '';
+        break;
+      case 'image':
+        // Assuming your images are in the /cache/images/ folder
+        contentHtml = `<img src="/cache/images/${chunk.content.image?.image_path}" alt="${chunk.content.image?.caption}" style="max-width: 100%; border-radius: 4px;"/><p><em>${chunk.content.image?.caption}</em></p>`;
+        break;
+      case 'table':
+        contentHtml = chunk.content.table?.html || '';
+        break;
+    }
+    return `
+      <div class="rag-chunk">
+        ${contentHtml}
+        <div class="rag-chunk-meta">Source: ${chunk.metadata.document_title} (Page ${chunk.metadata.page_number})</div>
+      </div>
+    `;
+  }
   private _createPanelHTML(info: PlanetInfo): string {
+    const canSearch = !!this.currentDocumentId;
     return `
       <div style="padding: 24px; overflow-y: auto; max-height: 80vh;">
         <button id="detail-panel-close" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 24px; color: #fff; cursor: pointer; opacity: 0.7;">&times;</button>
@@ -110,11 +177,17 @@ export class DetailPanel {
           </div>
         ` : ''}
 
-        <!-- Placeholder for Step 4: RAG and Semantic Search -->
-        <div id="rag-section" style="margin-top: 24px; border-top: 1px solid rgba(200, 210, 255, 0.2); padding-top: 20px;">
+<div id="rag-section" style="margin-top: 24px; border-top: 1px solid rgba(200, 210, 255, 0.2); padding-top: 20px;">
           <h3 style="color: #667eea; margin: 0 0 12px 0;">Explore Further</h3>
-          <p style="color: #8992bf; font-size: 14px;">Future home of the NASA document semantic search. Ask a question about ${info.name}!</p>
-          <!-- Input and results will go here -->
+          ${canSearch ? `
+            <form id="rag-form">
+              <input type="text" id="rag-input" placeholder="Ask about the ${this.currentDocumentId}..." />
+              <button type="submit">Ask</button>
+            </form>
+            <div id="rag-results"></div>
+          ` : `
+            <p style="color: #8992bf; font-size: 14px;">No specific mission documents are linked to this object.</p>
+          `}
         </div>
       </div>
     `;

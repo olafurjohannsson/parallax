@@ -62,6 +62,7 @@ const apollo11LaunchScript: ScenarioScript = {
 
 export const apollo11Event: SpaceEvent = {
   id: 'apollo11',
+  documentId: 'apollo11_missionreport',
   title: 'Apollo 11 Moon Landing',
   description: 'First crewed mission to land on the Moon. Neil Armstrong and Buzz Aldrin spent 21.5 hours on the lunar surface while Michael Collins orbited above.',
   date: new Date('1969-07-20T20:17:40Z'),

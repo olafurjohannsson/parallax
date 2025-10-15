@@ -17,6 +17,7 @@ export interface PlanetData {
 
 export interface SpaceEvent {
   id: string;
+  documentId?: string;
   title: string;
   description: string;
   date: Date;

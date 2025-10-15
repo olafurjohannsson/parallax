@@ -12,6 +12,7 @@ import { TimeManager } from './core/TimeManager';
 import { SelectionManager } from './core/SelectionManager';
 import { ScenarioPlayer } from './core/ScenarioPlayer';
 import { LabelManager } from './core/LabelManager';
+import { RAGService } from './core/RAGService';
 
 // UI
 import { TimeControls } from './ui/TimeControls';
@@ -37,6 +38,7 @@ import { getISSPosition, issTo3D } from './components/ISS';
 import { simpleSearch } from './utils/search';
 
 async function init() {
+  RAGService.getInstance().initialize('/cache/');
   const loadingScreen = createLoadingScreen();
 
   try {

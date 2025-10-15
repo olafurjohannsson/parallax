@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,10 +11,12 @@
       padding: 0;
       box-sizing: border-box;
     }
+
     body {
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
+
     #canvas {
       display: block;
       width: 100vw;
@@ -21,10 +24,14 @@
     }
   </style>
 </head>
+
 <body>
   <div id="app-container" style="position: relative;">
-  <canvas id="canvas"></canvas>
-</div>
+    <canvas id="canvas"></canvas>
+  </div>
+  <script type="module" src="/edgebert/pkg/edgebert.js"></script>
+  <script type="module" src="/edgerag/pkg/edgerag.js"></script>
   <script type="module" src="/src/index.ts"></script>
 </body>
+
 </html>
