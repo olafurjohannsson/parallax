@@ -89,52 +89,44 @@ export class InteractionManager {
     this.canvas.style.cursor = 'default';
   }
   
-  private checkHover(clientX: number, clientY: number) {
+private checkHover(clientX: number, clientY: number) {
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    
+
     const objects = Array.from(this.interactables.values());
     const intersects = this.raycaster.intersectObjects(objects, true);
-    
+
+    let hoveredBodyId: string | null = null;
+
     if (intersects.length > 0) {
-      const object = intersects[0].object;
-      let bodyId = object.userData.id || object.parent?.userData.id;
-      
-      if (!bodyId && object.parent) {
-        const parent = object.parent;
-        if (parent.userData.id === 'earth') {
-          const earthRadius = 2.5;
-          const distanceFromEarth = object.position.length();
-          if (distanceFromEarth > earthRadius * 3) {
-            bodyId = 'moon';
-          }
-        }
+      const intersectedObject = intersects[0].object;
+      const userData = intersectedObject.userData;
+
+      if (userData.type === 'orbit') {
+        hoveredBodyId = userData.id;
+      } else if (userData.id) {
+        hoveredBodyId = userData.id;
+      } else if (intersectedObject.parent?.userData.id) {
+        hoveredBodyId = intersectedObject.parent.userData.id;
       }
-      
-      if (bodyId) {
-        const currentHover = this.stateManager.getState().hoveredBody;
-        if (bodyId !== currentHover) {
-          if (currentHover) {
-            this.eventBus.emit(Events.BODY_HOVER_END, { id: currentHover });
-          }
-          this.stateManager.hoverBody(bodyId);
-          this.eventBus.emit(Events.BODY_HOVER, { 
-            id: bodyId, 
-            x: clientX, 
-            y: clientY 
-          });
-          this.canvas.style.cursor = 'pointer';
-        }
-      }
-    } else {
-      const currentHover = this.stateManager.getState().hoveredBody;
+    }
+    const currentHover = this.stateManager.getState().hoveredBody;
+
+    if (hoveredBodyId !== currentHover) {
       if (currentHover) {
-        this.stateManager.hoverBody(null);
         this.eventBus.emit(Events.BODY_HOVER_END, { id: currentHover });
+      }
+      
+      if (hoveredBodyId) {
+        this.stateManager.hoverBody(hoveredBodyId);
+        this.eventBus.emit(Events.BODY_HOVER, { id: hoveredBodyId, x: clientX, y: clientY });
+        this.canvas.style.cursor = 'pointer';
+      } else {
+        this.stateManager.hoverBody(null);
         this.canvas.style.cursor = 'default';
       }
     }
   }
-  
+
   private handleClick() {
     const hoveredBody = this.stateManager.getState().hoveredBody;
     if (hoveredBody) {
@@ -143,7 +135,6 @@ export class InteractionManager {
     }
   }
   
-  // Touch event handlers
   private onTouchStart(event: TouchEvent) {
     if (event.touches.length === 1) {
       const touch = event.touches[0];

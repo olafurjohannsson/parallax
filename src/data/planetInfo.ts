@@ -15,6 +15,7 @@ export interface PlanetInfo {
   temperature?: { min: number; max: number }; // Celsius
   atmosphere?: string;
   funFact?: string;
+  axialTilt?: number
 }
 
 export const planetDatabase: Record<string, PlanetInfo> = {
@@ -31,6 +32,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     atmosphere: 'None (trace amounts)',
     description: 'The smallest planet and closest to the Sun',
     funFact: 'A year on Mercury is shorter than its day!',
+    axialTilt: 0.03,
   },
   venus: {
     id: 'venus',
@@ -45,6 +47,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     atmosphere: '96% CO₂, thick clouds of sulfuric acid',
     description: 'The hottest planet with a runaway greenhouse effect',
     funFact: 'Venus rotates backwards compared to most planets',
+    axialTilt: 177.4,
   },
   earth: {
     id: 'earth',
@@ -59,6 +62,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     atmosphere: '78% N₂, 21% O₂',
     description: 'The only known planet with life',
     funFact: 'Earth is the only planet not named after a god',
+    axialTilt: 23.5,
   },
   mars: {
     id: 'mars',
@@ -73,6 +77,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     atmosphere: '95% CO₂, very thin',
     description: 'The Red Planet with evidence of ancient water',
     funFact: 'Mars has the largest volcano in the solar system: Olympus Mons',
+    axialTilt: 25.2,
   },
   jupiter: {
     id: 'jupiter',
@@ -87,6 +92,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     atmosphere: '90% H₂, 10% He',
     description: 'The largest planet, a gas giant with a Great Red Spot storm',
     funFact: 'Jupiter has the shortest day of all planets despite its size',
+    axialTilt: 3.1,
   },
   saturn: {
     id: 'saturn',
@@ -101,6 +107,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     atmosphere: '96% H₂, 3% He',
     description: 'Famous for its spectacular ring system',
     funFact: 'Saturn could float in water due to its low density',
+    axialTilt: 26.7,
   },
   uranus: {
     id: 'uranus',
@@ -117,6 +124,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     discoveredBy: 'William Herschel',
     discoveredDate: '1781',
     funFact: 'Uranus rotates at 98° tilt - it rolls like a ball',
+    axialTilt: 97.8,
   },
   neptune: {
     id: 'neptune',
@@ -133,6 +141,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     discoveredBy: 'Johann Galle',
     discoveredDate: '1846',
     funFact: 'Neptune has the strongest winds in the solar system at 2,100 km/h',
+    axialTilt: 28.3,
   },
   sun: {
     id: 'sun',
@@ -147,6 +156,20 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     atmosphere: 'Hydrogen plasma',
     description: 'The star at the center of our solar system',
     funFact: 'The Sun contains 99.86% of all mass in the solar system',
+    axialTilt: 7.25,
+  },
+  moon: { 
+    id: 'moon',
+    name: 'Moon',
+    diameter: 3474,
+    mass: 0.0123,
+    gravity: 1.62,
+    dayLength: 708.7,
+    yearLength: 27.3,
+    moons: 0,
+    description: "Earth's only natural satellite. It is the fifth largest satellite in the Solar System.",
+    funFact: 'The Moon is drifting away from Earth at a rate of about 3.8 cm per year.',
+    axialTilt: 6.7,
   },
   iss: {
     id: 'iss',
@@ -158,6 +181,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
     yearLength: 0.0000001, // Not applicable
     moons: 0,
     description: 'A modular space station in low Earth orbit. A multinational collaborative project involving five space agencies, serving as a microgravity and space environment research laboratory.',
-    funFact: 'The ISS travels at a speed of 7.66 km/s, completing 15.5 orbits around Earth per day.'
+    funFact: 'The ISS travels at a speed of 7.66 km/s, completing 15.5 orbits around Earth per day.',
+    axialTilt: 0,
   }
 };

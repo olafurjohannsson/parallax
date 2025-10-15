@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 
 // Scene
 import { SolarSystemScene } from './scene/SolarSystemScene';
@@ -10,6 +11,7 @@ import { StateManager } from './core/StateManager';
 import { TimeManager } from './core/TimeManager';
 import { SelectionManager } from './core/SelectionManager';
 import { ScenarioPlayer } from './core/ScenarioPlayer';
+import { LabelManager } from './core/LabelManager';
 
 // UI
 import { TimeControls } from './ui/TimeControls';
@@ -48,20 +50,24 @@ async function init() {
     await resourceManager.preloadPlanetTextures();
 
     // Initialize scene
+    const container = document.getElementById('app-container')!;
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
     // UI Components
     const tooltip = new PlanetTooltip();
-    const minimap = new SolarSystemMinimap(
-      (planetId: string) => {
-        stateManager.selectBody(planetId)
-      }
-    );
+    const minimap = new SolarSystemMinimap();
     const scene = new SolarSystemScene(canvas, minimap);
+    await scene.initializeBodies(solarSystemData);
+
+    minimap.setScene(scene);
+
+    const labelManager = new LabelManager(container, scene.getScene(), scene.camera, scene.getBodies());
 
     const scenarioPlayer = ScenarioPlayer.getInstance();
     const storyPanel = new StoryPanel();
     const homeButton = new HomeButton(scene);
+
+    
 
     const eventPanel = new EventDetailPanel(
       () => { },
@@ -91,20 +97,26 @@ async function init() {
 
 
     // Add celestial bodies
-    await setupSolarSystem(scene);
+    // await setupSolarSystem(scene);
 
     const selectionManager = new SelectionManager(scene.getScene(), scene.getBodies());
-
+    const movementHandler = setupKeyboardShortcuts(scene, eventPanel);
+    
     // Setup render pipeline
     const renderPipeline = new RenderPipeline();
     renderPipeline.registerUpdatable(scene);
     renderPipeline.registerRenderable(scene);
+    renderPipeline.registerRenderable(labelManager);
+    renderPipeline.registerUpdatable(selectionManager);
+    renderPipeline.registerUpdatable(movementHandler);
+    renderPipeline.registerUpdatable(labelManager);
+
 
     // Setup ISS updates
-    setupISS(scene);
+    // setupISS(scene);
 
     // Setup keyboard shortcuts
-    setupKeyboardShortcuts(scene, eventPanel);
+    
     loadingScreen.remove();
     renderPipeline.start();
     timeManager.setSimulationTime(new Date());
@@ -200,7 +212,16 @@ async function setupISS(scene: SolarSystemScene) {
 }
 
 function setupKeyboardShortcuts(scene: SolarSystemScene, eventPanel: EventDetailPanel) {
+  const stateManager = StateManager.getInstance();
+  const keyStates: { [key: string]: boolean } = {};
   document.addEventListener('keydown', (e) => {
+    keyStates[e.code] = true;
+
+    if (e.code === 'Space') {
+      e.preventDefault(); // Prevent the page from scrolling
+      const currentState = stateManager.getState();
+      stateManager.setState('isPlaying', !currentState.isPlaying);
+    }
     const planetMap: Record<string, string> = {
       '1': 'mercury',
       '2': 'venus',
@@ -220,8 +241,44 @@ function setupKeyboardShortcuts(scene: SolarSystemScene, eventPanel: EventDetail
       scene.transitionToBody(planetId);
     }
 
+
   });
+  document.addEventListener('keyup', (e) => {
+    keyStates[e.code] = false;
+  });
+
+  const handleMovement = (deltaTime: number) => {
+    const moveSpeed = 50 * deltaTime; // Scene units per second
+    const panSpeed = 15.0 * deltaTime;
+
+    const cameraDirection = new THREE.Vector3();
+    scene.camera.getWorldDirection(cameraDirection);
+
+    if (keyStates['KeyW']) { // Move forward
+      scene.camera.position.addScaledVector(cameraDirection, moveSpeed);
+    }
+    if (keyStates['KeyS']) { // Move backward
+      scene.camera.position.addScaledVector(cameraDirection, -moveSpeed);
+    }
+
+    // For panning (left/right, up/down), we need the camera's local axes.
+    const right = new THREE.Vector3().crossVectors(cameraDirection, scene.camera.up);
+    const up = new THREE.Vector3().crossVectors(right, cameraDirection);
+
+    if (keyStates['KeyD']) { // Pan right
+      scene.camera.position.addScaledVector(right, -panSpeed);
+    }
+    if (keyStates['KeyA']) { // Pan left
+      scene.camera.position.addScaledVector(right, panSpeed);
+    }
+  };
+
+  // We need to hook this movement handler into the main render loop.
+  // The easiest way is to register it as a simple updatable with the pipeline.
+  return { update: handleMovement };
 }
+
+
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

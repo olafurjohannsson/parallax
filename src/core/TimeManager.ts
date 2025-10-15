@@ -30,13 +30,12 @@ export class TimeManager {
       return;
     }
     
-    this.deltaTime = (currentTime - this.lastFrameTime) / 1000; // Convert to seconds
+    this.deltaTime = (currentTime - this.lastFrameTime) / 1000; 
     this.elapsedTime += this.deltaTime;
     this.lastFrameTime = currentTime;
     
     const state = this.stateManager.getState();
     if (state.isPlaying) {
-      // Update simulation time based on time scale
       const millisToAdd = this.deltaTime * state.timeScale * 1000;
       this.simulationTime = new Date(this.simulationTime.getTime() + millisToAdd);
       this.stateManager.updateDate(this.simulationTime);

@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { EventBus, Events } from './EventBus';
 import { StateManager } from './StateManager';
+import { planetDatabase } from '../data/planetInfo';
+import { getColorForBody } from '../data/visualData';
 
 export class SelectionManager {
     private scene: THREE.Scene;
@@ -32,70 +34,62 @@ export class SelectionManager {
             }
         });
     }
-
-    private _createHoverEffect(bodyId: string) {
-        if (this.stateManager.getState().selectedBody === bodyId) return;
+    private _createAxialHighlight(bodyId: string, color: THREE.Color, isDashed: boolean = false): THREE.Object3D | null {
         const body = this.bodies.get(bodyId);
-        if (!body) return;
-
-        this._destroyHoverEffect();
+        if (!body) return null;
 
         const effectGroup = new THREE.Group();
-        const radius = this._getBodyRadius(body) * 1.2;
+        const radius = this._getBodyRadius(body);
+        const planetInfo = planetDatabase[bodyId];
+        const highlightColor = getColorForBody(bodyId);
 
-        const geometry = new THREE.TorusGeometry(radius, 0.05, 8, 100);
-        // [FIX] Use a dashed line material for hover
-        const material = new THREE.MeshBasicMaterial({
-            color: 0x00ffff,
-            transparent: true,
-            opacity: 0.7,
-        });
-        // This is a trick to make it look dashed without complex shaders
-        const segments = 100;
-        const points = [];
-        for (let i = 0; i < segments; i++) {
-            const theta = (i / segments) * Math.PI * 2;
-            if (i % 4 < 2) { // Create dashes by skipping segments
-                points.push(new THREE.Vector3(Math.cos(theta) * radius, Math.sin(theta) * radius, 0));
-            }
+        const poleLength = radius * 1.5;
+        const poleGeo = new THREE.CylinderGeometry(0.02, 0.02, poleLength, 8);
+
+        if (isDashed) {
+            highlightColor.multiplyScalar(1.5); 
         }
-        const ringGeo = new THREE.BufferGeometry().setFromPoints(points);
-        const ringMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 });
-        const ring = new THREE.Line(ringGeo, ringMat);
-        ring.rotation.x = Math.PI / 2;
 
-        effectGroup.add(ring);
-        this.hoverEffect = effectGroup;
-        body.add(this.hoverEffect);
+        let poleMat;
+        if (isDashed) {
+            poleMat = new THREE.LineDashedMaterial({
+                color: highlightColor,
+                dashSize: 0.1,
+                gapSize: 0.1,
+            });
+            const line = new THREE.Line(poleGeo, poleMat);
+            line.computeLineDistances();
+            effectGroup.add(line);
+        } else {
+            poleMat = new THREE.MeshBasicMaterial({ color: highlightColor });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            effectGroup.add(pole);
+        }
+
+        if (planetInfo && planetInfo.axialTilt !== undefined) {
+            const tilt = planetInfo.axialTilt * (Math.PI / 180);
+            effectGroup.rotation.z = tilt;
+        }
+
+        body.add(effectGroup);
+        return effectGroup;
+    }
+    private _createHoverEffect(bodyId: string) {
+        if (this.stateManager.getState().selectedBody === bodyId) return;
+        this._destroyHoverEffect();
+        this.hoverEffect = this._createAxialHighlight(bodyId, true); 
     }
 
     private _createSelectionEffect(bodyId: string) {
-        const body = this.bodies.get(bodyId);
-        if (!body) return;
-
         this._destroySelectionEffect();
-
-        const effectGroup = new THREE.Group();
-        const radius = this._getBodyRadius(body) * 1.3;
-
-        // [FIX] Use a single, thicker, solid ring for selection
-        const ringGeo = new THREE.TorusGeometry(radius, 0.1, 16, 100);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x667eea, transparent: true, opacity: 0.9 });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = Math.PI / 2;
-
-        effectGroup.add(ring);
-        effectGroup.userData.animation = { ring };
-
-        this.selectionEffect = effectGroup;
-        body.add(this.selectionEffect);
+        this.selectionEffect = this._createAxialHighlight(bodyId, false); 
     }
 
     private _destroyHoverEffect() {
         if (this.hoverEffect) {
             this.hoverEffect.parent?.remove(this.hoverEffect);
-            (this.hoverEffect.children[0] as THREE.Mesh).geometry.dispose();
-            ((this.hoverEffect.children[0] as THREE.Mesh).material as THREE.Material).dispose();
+            (this.hoverEffect.children[0] as THREE.Line).geometry.dispose();
+            ((this.hoverEffect.children[0] as THREE.Line).material as THREE.Material).dispose();
             this.hoverEffect = null;
         }
     }
@@ -104,13 +98,23 @@ export class SelectionManager {
     private _destroySelectionEffect() {
         if (this.selectionEffect) {
             this.selectionEffect.parent?.remove(this.selectionEffect);
-            this.selectionEffect.children.forEach(child => {
-                (child as THREE.Mesh).geometry.dispose();
-                ((child as THREE.Mesh).material as THREE.Material).dispose();
-            });
+            (this.selectionEffect.children[0] as THREE.Mesh).geometry.dispose();
+            ((this.selectionEffect.children[0] as THREE.Mesh).material as THREE.Material).dispose();
             this.selectionEffect = null;
         }
     }
+
+
+    public update(deltaTime: number) {
+        if (this.hoverEffect?.userData.uniforms) {
+            this.hoverEffect.userData.uniforms.time.value += deltaTime;
+        }
+        if (this.selectionEffect?.userData.animation) {
+            const { ring } = this.selectionEffect.userData.animation;
+            ring.rotation.z += deltaTime * 0.3;
+        }
+    }
+
 
     private _getBodyRadius(body: THREE.Object3D): number {
         const box = new THREE.Box3().setFromObject(body);
@@ -119,10 +123,4 @@ export class SelectionManager {
         return sphere.radius;
     }
 
-    public update(deltaTime: number) {
-        if (this.selectionEffect?.userData.animation) {
-            const { ring } = this.selectionEffect.userData.animation;
-            ring.rotation.z += deltaTime * 0.3;
-        }
-    }
 }

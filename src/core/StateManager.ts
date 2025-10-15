@@ -24,7 +24,7 @@ export class StateManager {
       selectedBody: null,
       hoveredBody: null,
       isPlaying: true,
-      timeScale: 86400, // 1 day per second
+      timeScale: 86400,
       cameraTarget: null,
       showOrbits: true,
       showLabels: false,
