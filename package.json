@@ -10,5 +10,8 @@
     "three": "^0.180.0",
     "tween": "^0.9.0",
     "vite": "^7.1.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }
