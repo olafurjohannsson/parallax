@@ -1,6 +1,7 @@
 import initEdgeRag, { WasmModel, WasmModelType } from '/edgebert/pkg/edgebert.js';
 import initEdgeBert, { EdgeRAG } from '/edgerag/pkg/edgerag.js';
 
+import { documentRegistry, DocumentId } from './DocumentRegistry';
 import { pipeline, SummarizationPipeline } from '@xenova/transformers';
 
 // Define a type for our rich chunk data
@@ -21,7 +22,7 @@ export interface DocumentChunk {
 export class RAGService {
     private static instance: RAGService;
     private isInitialized = false;
-
+    private currentDocumentId: DocumentId | null = null;
     private bertModel: WasmModel | null = null;
     private ragIndex: EdgeRAG | null = null;
     private summarizer: SummarizationPipeline | null = null;
@@ -36,22 +37,39 @@ export class RAGService {
         return RAGService.instance;
     }
 
-    public async initialize(cachePath: string = '/cache/') {
-        if (this.isInitialized) return;
+    public async initialize(documentId: DocumentId) {
+        if (this.isInitialized && this.currentDocumentId === documentId) {
+            console.log(`RAGService: Index for "${documentId}" is already loaded.`);
+            return;
+        }
 
-        console.log('RAGService: Initializing...');
+        console.log(`RAGService: Initializing for index "${documentId}"...`);
+        this.isInitialized = false;
+        this.currentDocumentId = documentId;
+        const paths = documentRegistry[documentId];
+        if (!paths) {
+            throw new Error(`RAGService: No document found in registry for ID: ${documentId}`);
+        }
+
         try {
-            // Step 1: Initialize the WASM modules first. This is crucial.
+            
             await Promise.all([initEdgeBert(), initEdgeRag()]);
             console.log('RAGService: WASM modules loaded.');
 
-            // Step 2: Fetch all the necessary data files
             const [chunksRes, textEmbeddingsRes, bm25IndexRes] = await Promise.all([
-                fetch(`${cachePath}chunks.json`).then(r => r.text()),
-                fetch(`${cachePath}text_embeddings.bin`).then(r => r.arrayBuffer()),
-                fetch(`${cachePath}bm25_index.json`).then(r => r.text())
+                fetch(paths.chunksUrl),
+                fetch(paths.embeddingsUrl),
+                fetch(paths.bm25Url)
             ]);
-            // console.log(chunksRes, textEmbeddingsRes, bm25IndexRes)
+
+            const chunksJsonString = await chunksRes.text();
+            const vectorStoreJsonString = await textEmbeddingsRes.text();
+            const bm25JsonString = await bm25IndexRes.text();
+            
+
+            console.log(chunksJsonString.length,
+                vectorStoreJsonString.length,
+                bm25JsonString)
 
             // this.chunks = await chunksRes.json();
             // const textEmbeddings = await textEmbeddingsRes.arrayBuffer();
@@ -63,10 +81,10 @@ export class RAGService {
             this.ragIndex = new EdgeRAG();
 
             console.log('Bert and rag init')
-            
-            this.ragIndex.loadVectors(textEmbeddingsRes);
-            this.ragIndex.loadBM25(bm25IndexRes);
-            this.ragIndex.loadChunks(chunksRes);
+
+            await this.ragIndex.loadChunks(chunksJsonString);
+            await this.ragIndex.loadVectors(vectorStoreJsonString);
+            await this.ragIndex.loadBM25(bm25JsonString);
             console.log('loaded')
 
             // Step 4: Load the data into the instances
@@ -81,7 +99,7 @@ export class RAGService {
             console.log('RAGService: Initialization complete. Ready to search.');
 
             // Step 5: Pre-load the summarizer in the background
-            this.getSummarizer();
+            // this.getSummarizer();
 
         } catch (error) {
             console.error('RAGService: Failed to initialize.', error);

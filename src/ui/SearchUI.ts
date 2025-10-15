@@ -1,9 +1,13 @@
+import { EventBus, Events } from '../core/EventBus';
+
 export class SearchUI {
   private container: HTMLDivElement;
   private input: HTMLInputElement;
   private results: HTMLDivElement;
+  private eventBus: EventBus;
   
   constructor(onSearch: (query: string) => void) {
+    this.eventBus = EventBus.getInstance();
     this.container = document.createElement('div');
     this.container.style.cssText = `
       position: fixed;
@@ -51,7 +55,7 @@ export class SearchUI {
   showResults(results: Array<{id: string, name: string, score: number}>) {
     this.results.innerHTML = '';
     this.results.style.display = results.length > 0 ? 'block' : 'none';
-    
+
     results.forEach(r => {
       const item = document.createElement('div');
       item.style.cssText = `
@@ -60,12 +64,12 @@ export class SearchUI {
         cursor: pointer;
         color: white;
       `;
-      item.innerHTML = `
-        <strong>${r.name}</strong>
-        <span style="float: right; opacity: 0.6;">${(r.score * 100).toFixed(0)}%</span>
-      `;
+      item.innerHTML = `<strong>${r.name}</strong>`;
+      
       item.addEventListener('click', () => {
-        window.dispatchEvent(new CustomEvent('navigate', { detail: r.id }));
+        this.eventBus.emit(Events.BODY_CLICK, { id: r.id });
+        
+        this.input.value = '';
         this.results.style.display = 'none';
       });
       this.results.appendChild(item);

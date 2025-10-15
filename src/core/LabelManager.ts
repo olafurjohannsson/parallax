@@ -15,7 +15,7 @@ export class LabelManager {
     private labels: { [id: string]: { object: CSS2DObject; element: HTMLElement; body: THREE.Object3D } } = {};
 
     private minFadeDistance = 200;
-    private maxFadeDistance = 800;
+    private maxFadeDistance = 400;
 
     constructor(container: HTMLElement, scene: THREE.Scene, camera: THREE.Camera, bodies: Map<string, THREE.Object3D>) {
         this.scene = scene;
@@ -42,16 +42,16 @@ export class LabelManager {
         const labelColor = getColorForBody(id);
         element.className = 'solkerfi-label';
         element.textContent = id.charAt(0).toUpperCase() + id.slice(1);
-        element.style.cssText = `
-      color: #fff;
+element.style.cssText = `
       font-family: Arial, sans-serif;
       font-size: 14px;
-      padding: 4px 8px;
+      padding: 2px 5px;
       background: rgba(0, 0, 0, 0.5);
       border-radius: 4px;
-      border: 1px solid ${labelColor.getStyle()};
       opacity: 0;
       transition: opacity 0.3s;
+      color: ${labelColor.getStyle()}; /* Apply the color to the text */
+      border: none; /* Remove the border */
     `;
 
         const labelObject = new CSS2DObject(element);

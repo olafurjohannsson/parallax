@@ -19,7 +19,7 @@ export const earthFragmentShader = `
   uniform sampler2D dayTexture;
   uniform sampler2D nightTexture;
   uniform sampler2D specularMap;
-  uniform vec3 sunDirection; // This will now be the direction FROM the sun, in world space
+  uniform vec3 sunDirection;
 
   varying vec2 vUv;
   varying vec3 vWorldNormal;
@@ -29,19 +29,10 @@ export const earthFragmentShader = `
     vec3 dayColor = texture2D(dayTexture, vUv).rgb;
     vec3 nightColor = texture2D(nightTexture, vUv).rgb;
     float specularMask = texture2D(specularMap, vUv).r;
-
-    // --- Lighting Calculation in World Space ---
     vec3 normal = normalize(vWorldNormal);
-    // [THE FIX] We no longer negate the sunDirection here. We just use the direct value.
     float lightIntensity = max(0.0, dot(normal, sunDirection)); 
-
-    // --- Day/Night Mixing ---
     float dayNightMix = smoothstep(0.0, 0.15, lightIntensity); // Adjust feathering
-
-    // --- Final Color Composition ---
     vec3 finalColor = mix(nightColor, dayColor, dayNightMix);
-    
-    // Add back the emissive city lights on the dark side
     finalColor += nightColor * (1.0 - dayNightMix) * 1.5;
 
     gl_FragColor = vec4(finalColor, 1.0);

@@ -111,6 +111,8 @@ export class SolarSystemScene {
     if (earth) {
       const moon = this.factory.createMoon((earth.geometry as THREE.SphereGeometry).parameters.radius);
       this.bodies.set('moon', moon);
+      this.factory.createMoonOrbit(earth);
+      
       this.iss = await this.factory.createISS(earth);
     }
   }

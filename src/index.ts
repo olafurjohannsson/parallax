@@ -38,7 +38,7 @@ import { getISSPosition, issTo3D } from './components/ISS';
 import { simpleSearch } from './utils/search';
 
 async function init() {
-  RAGService.getInstance().initialize('/cache/');
+  RAGService.getInstance().initialize('iss');
   const loadingScreen = createLoadingScreen();
 
   try {
@@ -69,7 +69,7 @@ async function init() {
     const storyPanel = new StoryPanel();
     const homeButton = new HomeButton(scene);
 
-    
+
 
     const eventPanel = new EventDetailPanel(
       () => { },
@@ -103,7 +103,7 @@ async function init() {
 
     const selectionManager = new SelectionManager(scene.getScene(), scene.getBodies());
     const movementHandler = setupKeyboardShortcuts(scene, eventPanel);
-    
+
     // Setup render pipeline
     const renderPipeline = new RenderPipeline();
     renderPipeline.registerUpdatable(scene);
@@ -118,7 +118,7 @@ async function init() {
     // setupISS(scene);
 
     // Setup keyboard shortcuts
-    
+
     loadingScreen.remove();
     renderPipeline.start();
     timeManager.setSimulationTime(new Date());
@@ -179,6 +179,8 @@ function setupEventListeners(
   scene: SolarSystemScene,
   tooltip: PlanetTooltip
 ) {
+  const stateManager = StateManager.getInstance();
+
   eventBus.on(Events.BODY_HOVER, ({ id, x, y }) => {
     const planetInfo = planetDatabase[id];
     if (planetInfo) tooltip.show(planetInfo, x, y);
@@ -186,7 +188,13 @@ function setupEventListeners(
 
   eventBus.on(Events.BODY_HOVER_END, () => tooltip.hide());
 
-  eventBus.on(Events.BODY_CLICK, ({ id }) => scene.transitionToBody(id));
+  eventBus.on(Events.BODY_CLICK, ({ id }) => {
+
+    scene.transitionToBody(id);
+
+    stateManager.selectBody(id);
+
+  });
 
 }
 
