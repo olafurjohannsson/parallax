@@ -1,5 +1,5 @@
-// import initEdgeRag, { WasmModel, WasmModelType } from '/edgebert/pkg/edgebert.js';
-// import initEdgeBert, { EdgeRAG } from '/edgerag/pkg/edgerag.js';
+import initEdgeRag, { WasmModel, WasmModelType } from '../edgebert/pkg/edgebert.js';
+import initEdgeBert, { EdgeRAG } from '../edgerag/pkg/edgerag.js';
 
 import { documentRegistry, DocumentId } from './DocumentRegistry';
 import { pipeline, SummarizationPipeline } from '@xenova/transformers';
