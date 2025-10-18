@@ -16,6 +16,7 @@ export interface PlanetInfo {
   atmosphere?: string;
   funFact?: string;
   axialTilt?: number
+  documentId?: string,
 }
 
 export const planetDatabase: Record<string, PlanetInfo> = {
@@ -173,6 +174,7 @@ export const planetDatabase: Record<string, PlanetInfo> = {
   },
   iss: {
     id: 'iss',
+    documentId: 'iss',
     name: 'International Space Station',
     diameter: 0.109, // in km (109 meters)
     mass: 4.5e-19, // in Earth masses (450,000 kg)

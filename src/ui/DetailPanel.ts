@@ -50,7 +50,8 @@ export class DetailPanel {
   private _setupEventListeners() {
     this.eventBus.on('state:selectedBody', ({ newValue }) => {
       if (newValue) {
-        this.show(newValue);
+        const info = planetDatabase[newValue];
+        this.show(newValue, info?.documentId);
       } else {
         this.hide();
       }
@@ -73,12 +74,7 @@ export class DetailPanel {
       const searchInput = document.getElementById('rag-input') as HTMLInputElement;
       const searchButton = document.getElementById('rag-submit-btn') as HTMLButtonElement;
 
-      // Initialize the RAG service for this specific document
-      console.log('initializing ', this.currentDocumentId)
-      let doc = documentRegistry[this.currentDocumentId];
-
-      RAGService.getInstance().initialize(doc).then(() => {
-        // Once initialized, enable the search bar
+      RAGService.getInstance().initialize(this.currentDocumentId as DocumentId).then(() => {
         searchInput.placeholder = `Ask about the ${info.name}...`;
         searchInput.disabled = false;
         searchButton.disabled = false;
@@ -127,20 +123,17 @@ export class DetailPanel {
 
     if (!resultsContainer || !searchInput || !searchButton) return;
 
-    // Disable the form and show a loading state
     searchInput.disabled = true;
     searchButton.disabled = true;
     resultsContainer.innerHTML = `<div class="rag-status">Searching knowledge base...</div>`;
 
     try {
-      // 1. Find the most relevant chunks using the RAGService
       const chunks = await RAGService.getInstance().search(query);
       if (!chunks || chunks.length === 0) {
         resultsContainer.innerHTML = `<div class="rag-status">No relevant information found in the documents for that query.</div>`;
         return;
       }
 
-      // 2. Create a context string from the text of the chunks for the summarizer
       const context = chunks
         .map(c => c.content.text?.text || c.content.image?.caption || '')
         .filter(Boolean)
@@ -148,10 +141,8 @@ export class DetailPanel {
 
       resultsContainer.innerHTML = `<div class="rag-status">Found relevant excerpts. Generating summary...</div>`;
 
-      // 3. Get an AI-generated summary of the context
-      const summary = await RAGService.getInstance().summarize(context);
+      const summary = "Summary";
 
-      // 4. Render the final results
       let html = `<h4>AI Summary:</h4><p class="rag-summary">${summary}</p><h4>Relevant Excerpts:</h4>`;
       html += chunks.map(chunk => this._renderChunk(chunk)).join('');
       resultsContainer.innerHTML = html;
@@ -160,16 +151,15 @@ export class DetailPanel {
       console.error('RAG search failed:', error);
       resultsContainer.innerHTML = `<div class="rag-status">An error occurred during the search. Please try again.</div>`;
     } finally {
-      // Re-enable the form
       searchInput.disabled = false;
       searchButton.disabled = false;
     }
   }
 
-  // [NEW] Method to render a single rich chunk
   private _renderChunk(chunk: DocumentChunk): string {
     let contentHtml = '';
     const cachePath = `/cache/${this.currentDocumentId}`;
+    console.log(cachePath)
 
     switch (chunk.content.type) {
       case 'text':
@@ -198,7 +188,6 @@ export class DetailPanel {
     `;
   }
 
-  // [MODIFIED] Update the HTML to include a proper form and styles
   private _createPanelHTML(info: PlanetInfo): string {
     const canSearch = !!this.currentDocumentId;
     const createStat = (label: string, value: string) => `
